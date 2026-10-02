@@ -74,4 +74,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" release-files/* --generate-notes --title "Voice Input $version"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" release-files/* --generate-notes --title "Voice Input $version"
