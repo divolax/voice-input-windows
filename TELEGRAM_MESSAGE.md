@@ -1,6 +1,6 @@
 # Сообщение и выдача в Telegram-боте
 
-Перед запуском замените `GITHUB_RELEASE_URL` и `GITHUB_README_URL` на ссылки созданного GitHub-репозитория. Не публикуйте установщик, пока не проверите его в чистой учетной записи Windows.
+Ссылки уже настроены на публичный GitHub Release. Не публикуйте установщик повторно из локальной папки: бот должен вести на актуальный GitHub Release.
 
 ## Сообщение после `/start voice_input`
 
@@ -19,8 +19,8 @@
 
 ## Кнопки
 
-- **Скачать установщик** → `GITHUB_RELEASE_URL`
-- **Полная инструкция и помощь** → `GITHUB_README_URL`
+- **Скачать установщик** → https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-Setup-0.2.0-x64.exe
+- **Полная инструкция и помощь** → https://github.com/divolax/voice-input-windows#readme
 
 Прямую передачу `.exe` через Telegram Bot API пока не используем: Telegram указывает для отправки документа ботом лимит 50 МБ, тогда как текущий установщик около 90 МБ; скачивание документа по HTTP URL через `sendDocument` официально ограничено PDF/ZIP. Кнопка открывает релиз, где лежат установщик и файл для проверки SHA-256.
 
@@ -28,4 +28,4 @@
 
 Собери новую версию, создай тег `vX.Y.Z` и отправь его в GitHub. Workflow опубликует установщик в Releases. Обнови в этом сообщении кнопку полной инструкции, если изменился её адрес. Ссылка скачивания последнего установщика:
 
-`GITHUB_RELEASE_URL`
+https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-Setup-0.2.0-x64.exe
