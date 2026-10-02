@@ -1,4 +1,4 @@
-name: Build Windows installer
+name: Build Windows and macOS releases
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,11 +23,55 @@ jobs:
         run: |
           $version = $env:GITHUB_REF_NAME.Substring(1)
           .\build.ps1 -Python python -Version $version
-      - name: Publish GitHub Release
+      - name: Package source archive and guide
         shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          python .\build-source-zip.py $version
+          Copy-Item .\docs\VoiceInput-Guide-RU.docx .\build\release-assets\
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: |
+            build/installer/*.exe
+            build/installer/*.sha256
+            build/release-assets/*.zip
+            build/release-assets/*.docx
+
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and verify macOS app
+        run: bash ./build-macos.sh "${GITHUB_REF_NAME#v}" "${{ matrix.architecture }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.architecture }}
+          path: build/release-assets/*.dmg*
+
+  publish-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-files
+          merge-multiple: true
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $version = $env:GITHUB_REF_NAME.Substring(1)
-          $installer = "build\installer\VoiceInput-Setup-$version-x64.exe"
-          gh release create $env:GITHUB_REF_NAME $installer "${installer}.sha256" --generate-notes --title "Voice Input $version"
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" release-files/* --generate-notes --title "Voice Input $version"

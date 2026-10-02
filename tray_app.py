@@ -1,12 +1,15 @@
 """Windows system-tray shell for the local voice-input service."""
 from __future__ import annotations
 
-import ctypes
 import os
+import plistlib
 import sys
+import subprocess
 import threading
-import winreg
 from pathlib import Path
+
+if sys.platform == "win32":
+    import winreg
 
 import pystray
 from PIL import Image, ImageDraw
@@ -17,14 +20,20 @@ from dictation import DictationApp, status
 APP_NAME = "Voice Input"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 MUTEX_NAME = "Local\\VoiceInput.Singleton"
+LAUNCH_AGENT_LABEL = "com.divolax.voiceinput"
+LAUNCH_AGENT_PATH = Path.home() / "Library" / "LaunchAgents" / f"{LAUNCH_AGENT_LABEL}.plist"
 _mutex_handle = None
 
 
 def app_data_dir() -> Path:
-    return Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "VoiceInput"
+    return Path(dictation.DATA_DIR)
 
 
 def is_autostart_enabled() -> bool:
+    if sys.platform == "darwin":
+        return LAUNCH_AGENT_PATH.exists()
+    if sys.platform != "win32":
+        return False
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
             winreg.QueryValueEx(key, APP_NAME)
@@ -34,6 +43,45 @@ def is_autostart_enabled() -> bool:
 
 
 def set_autostart(enabled: bool) -> None:
+    if sys.platform == "darwin":
+        domain = f"gui/{os.getuid()}"
+        subprocess.run(
+            ["launchctl", "bootout", domain, str(LAUNCH_AGENT_PATH)],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if not enabled:
+            LAUNCH_AGENT_PATH.unlink(missing_ok=True)
+            return
+
+        LAUNCH_AGENT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        if getattr(sys, "frozen", False):
+            app_path = Path(sys.executable).resolve().parents[2]
+            program_arguments = ["/usr/bin/open", "-a", str(app_path)]
+        else:
+            program_arguments = [sys.executable, str(Path(sys.argv[0]).resolve())]
+        with LAUNCH_AGENT_PATH.open("wb") as file:
+            plistlib.dump(
+                {
+                    "Label": LAUNCH_AGENT_LABEL,
+                    "ProgramArguments": program_arguments,
+                    "RunAtLoad": True,
+                    "KeepAlive": False,
+                },
+                file,
+            )
+        subprocess.run(
+            ["launchctl", "bootstrap", domain, str(LAUNCH_AGENT_PATH)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return
+
+    if sys.platform != "win32":
+        raise RuntimeError("Automatic startup is not supported on this platform.")
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
         if enabled:
             executable = Path(sys.executable).resolve()
@@ -48,6 +96,13 @@ def set_autostart(enabled: bool) -> None:
                 winreg.DeleteValue(key, APP_NAME)
             except FileNotFoundError:
                 pass
+
+
+def open_path(path: Path) -> None:
+    if sys.platform == "darwin":
+        subprocess.run(["open", str(path)], check=False)
+    else:
+        os.startfile(path)
 
 
 class TrayShell:
@@ -85,46 +140,63 @@ class TrayShell:
         self.icon.update_menu()
 
     def toggle_autostart(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
-        set_autostart(not is_autostart_enabled())
+        try:
+            set_autostart(not is_autostart_enabled())
+        except (OSError, subprocess.CalledProcessError) as exc:
+            status(f"Could not change automatic startup: {exc}")
         self.icon.update_menu()
+
+    def open_macos_permissions(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
+        subprocess.run(["open", "-a", "System Settings"], check=False)
 
     def open_history(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         history = Path(dictation.HISTORY_PATH)
         history.parent.mkdir(parents=True, exist_ok=True)
         if not history.exists():
             history.write_text("Пока нет распознанных диктовок.\n", encoding="utf-8")
-        os.startfile(history)
+        open_path(history)
 
     def open_data_folder(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         app_data_dir().mkdir(parents=True, exist_ok=True)
-        os.startfile(app_data_dir())
+        open_path(app_data_dir())
 
     def exit_app(self, icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         self.service.request_exit()
         icon.stop()
 
     def run(self) -> None:
-        self.icon = pystray.Icon(
-            APP_NAME,
-            self.make_icon(),
-            APP_NAME,
-            menu=pystray.Menu(
-                pystray.MenuItem(
-                    lambda _item: "Пауза голосового ввода" if self.service.enabled else "Включить голосовой ввод",
-                    self.toggle_enabled,
-                ),
-                pystray.MenuItem(lambda _item: f"Состояние: {self.status_text[:45]}", None, enabled=False),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Открыть историю диктовок", self.open_history),
-                pystray.MenuItem("Открыть папку данных", self.open_data_folder),
+        menu_items = [
+            pystray.MenuItem(
+                lambda _item: "Пауза голосового ввода" if self.service.enabled else "Включить голосовой ввод",
+                self.toggle_enabled,
+            ),
+            pystray.MenuItem(lambda _item: f"Состояние: {self.status_text[:45]}", None, enabled=False),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Открыть историю диктовок", self.open_history),
+            pystray.MenuItem("Открыть папку данных", self.open_data_folder),
+        ]
+        if sys.platform == "darwin":
+            menu_items.append(pystray.MenuItem("Разрешения macOS", self.open_macos_permissions))
+        menu_items.extend(
+            [
                 pystray.MenuItem(
                     lambda _item: "Отключить автозапуск" if is_autostart_enabled() else "Включить автозапуск",
                     self.toggle_autostart,
                 ),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Выход", self.exit_app),
-            ),
+            ]
         )
+        self.icon = pystray.Icon(
+            APP_NAME,
+            self.make_icon(),
+            APP_NAME,
+            menu=pystray.Menu(*menu_items),
+        )
+        if sys.platform == "darwin":
+            threading.Thread(target=self.service.run, name="dictation-service", daemon=True).start()
+            self.icon.run()
+            return
         self.icon.run_detached()
         self.service.run()
         self.icon.stop()
@@ -132,6 +204,10 @@ class TrayShell:
 
 def acquire_single_instance() -> bool:
     global _mutex_handle
+    if sys.platform != "win32":
+        return True
+    import ctypes
+
     kernel32 = ctypes.windll.kernel32
     _mutex_handle = kernel32.CreateMutexW(None, False, MUTEX_NAME)
     return kernel32.GetLastError() != 183
@@ -147,6 +223,8 @@ def main() -> None:
             raise
         return
     if not acquire_single_instance():
+        import ctypes
+
         ctypes.windll.user32.MessageBoxW(None, "Voice Input уже запущен. Найдите его значок в системном трее.", APP_NAME, 0x40)
         return
     app = DictationApp()

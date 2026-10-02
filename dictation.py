@@ -1,6 +1,6 @@
-"""Local push-to-talk dictation for Windows.
+"""Local push-to-talk dictation for Windows and macOS.
 
-Hold Ctrl+Alt to record. Release either key to transcribe and paste. Press Esc to quit.
+Hold Ctrl+Alt (Windows) or Control+Option (macOS) to record. Release either key to transcribe and paste.
 """
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import queue
 import sys
 import threading
 import time
-import ctypes
 import json
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -32,7 +31,12 @@ CHANNELS = 1
 MIN_RECORDING_SECONDS = 0.25
 MODEL_NAME = os.environ.get("WHISPER_MODEL", "base")
 LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "ru")
-DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "VoiceInput"
+if os.environ.get("LOCALAPPDATA"):
+    DATA_DIR = Path(os.environ["LOCALAPPDATA"]) / "VoiceInput"
+elif sys.platform == "darwin":
+    DATA_DIR = Path.home() / "Library" / "Application Support" / "VoiceInput"
+else:
+    DATA_DIR = Path.home() / ".local" / "share" / "VoiceInput"
 LOG_PATH = str(DATA_DIR / "dictation.log")
 HISTORY_PATH = str(DATA_DIR / "history.txt")
 HISTORY_JSON_PATH = str(DATA_DIR / "history.json")
@@ -93,7 +97,7 @@ def save_history(text: str, duration: float, now: str | None = None) -> None:
 
 @dataclass
 class HotkeyTracker:
-    """Pure state machine for the Ctrl+Alt hold gesture."""
+    """Pure state machine for the Control+Alt/Option hold gesture."""
 
     held: set[str] = field(default_factory=set)
     is_recording: bool = False
@@ -261,12 +265,21 @@ class DictationApp:
             previous = None
         pyperclip.copy(text)
         time.sleep(0.15)
-        window = ctypes.windll.user32.GetForegroundWindow()
-        title_length = ctypes.windll.user32.GetWindowTextLengthW(window)
-        title = ctypes.create_unicode_buffer(title_length + 1)
-        ctypes.windll.user32.GetWindowTextW(window, title, len(title))
-        status(f"Sending Ctrl+V to window={window}, title={title.value!r}.")
-        self.send_ctrl_v()
+        if sys.platform == "darwin":
+            status("Sending Command+V.")
+            self.send_modifier_v(keyboard.Key.cmd)
+        elif sys.platform == "win32":
+            import ctypes
+
+            window = ctypes.windll.user32.GetForegroundWindow()
+            title_length = ctypes.windll.user32.GetWindowTextLengthW(window)
+            title = ctypes.create_unicode_buffer(title_length + 1)
+            ctypes.windll.user32.GetWindowTextW(window, title, len(title))
+            status(f"Sending Ctrl+V to window={window}, title={title.value!r}.")
+            self.send_ctrl_v()
+        else:
+            status("Sending Ctrl+V.")
+            self.send_modifier_v(keyboard.Key.ctrl)
         if previous is not None:
             time.sleep(0.20)
             try:
@@ -278,6 +291,8 @@ class DictationApp:
     @staticmethod
     def send_ctrl_v() -> None:
         """Use Windows SendInput, which is more reliable than a hook-driven controller."""
+        import ctypes
+
         user32 = ctypes.windll.user32
         # Clear a physically lingering modifier before forming Ctrl+V.
         user32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
@@ -287,6 +302,13 @@ class DictationApp:
         user32.keybd_event(VK_V, 0, 0, 0)
         user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
         user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+
+    def send_modifier_v(self, modifier: keyboard.Key) -> None:
+        """Use the platform keyboard controller for macOS Command+V."""
+        self.controller.press(modifier)
+        self.controller.press("v")
+        self.controller.release("v")
+        self.controller.release(modifier)
 
     def on_press(self, key: keyboard.Key | keyboard.KeyCode) -> bool | None:
         if key == keyboard.Key.esc:
@@ -310,8 +332,16 @@ class DictationApp:
             try:
                 self.start_audio()
                 self._log_audio_statuses()
-                status("Ready. Hold Ctrl+Alt to record; release both keys to paste.")
+                hotkey = "Control+Option" if sys.platform == "darwin" else "Ctrl+Alt"
+                status(f"Ready. Hold {hotkey} to record; release both keys to paste.")
                 listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
+                if sys.platform == "darwin" and not getattr(listener, "IS_TRUSTED", True):
+                    status(
+                        "macOS permission required: enable Voice Input in System Settings > Privacy & Security > "
+                        "Accessibility and Input Monitoring, then restart the app."
+                    )
+                    time.sleep(2)
+                    continue
                 self.listener = listener
                 if not self.enabled_event.is_set():
                     listener.stop()

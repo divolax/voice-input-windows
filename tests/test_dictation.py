@@ -2,10 +2,11 @@ import sys
 import unittest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import dictation
 from dictation import DictationApp, HotkeyTracker, normalize_text, save_history
 
 
@@ -26,6 +27,25 @@ class DictationTests(unittest.TestCase):
     def test_normalize_text(self):
         self.assertEqual(normalize_text('  Привет   мир.  '), 'Привет мир.')
         self.assertEqual(normalize_text(' \n\t '), '')
+
+    def test_macos_paste_uses_command_v(self):
+        app = DictationApp()
+        app.controller = Mock()
+
+        with patch('dictation.sys.platform', 'darwin'), \
+             patch('dictation.pyperclip.paste', return_value=None), \
+             patch('dictation.pyperclip.copy'), \
+             patch('dictation.time.sleep'):
+            app.paste('Привет, Mac!')
+
+        self.assertEqual(
+            app.controller.press.call_args_list,
+            [call(dictation.keyboard.Key.cmd), call('v')],
+        )
+        self.assertEqual(
+            app.controller.release.call_args_list,
+            [call('v'), call(dictation.keyboard.Key.cmd)],
+        )
 
     def test_history_keeps_ten_latest_entries(self):
         with tempfile.TemporaryDirectory() as directory:
