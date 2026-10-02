@@ -16,10 +16,10 @@
 
 ## Кнопки и файлы
 
-- **Windows — установщик x64** → `VoiceInput-Setup-0.3.0-x64.exe`
-- **MacBook — Apple silicon** → `VoiceInput-0.3.0-macos-arm64.dmg`
-- **MacBook — Intel** → `VoiceInput-0.3.0-macos-x86_64.dmg`
-- **Скрипты для Windows (ZIP)** → `VoiceInput-Source-0.3.0.zip`, отправляется ботом как документ.
+- **Windows — установщик x64** → `VoiceInput-Setup-0.3.1-x64.exe`
+- **MacBook — Apple silicon** → `VoiceInput-0.3.1-macos-arm64.dmg`
+- **MacBook — Intel** → `VoiceInput-0.3.1-macos-x86_64.dmg`
+- **Скрипты для Windows (ZIP)** → `VoiceInput-Source-0.3.1.zip`, отправляется ботом как документ.
 - **Инструкция Word** → `VoiceInput-Guide-RU.docx`, отправляется ботом как документ.
 - **Все файлы на GitHub** → https://github.com/divolax/voice-input-windows/releases/latest
 

@@ -6,15 +6,15 @@ Voice Input превращает речь в текст прямо на комп
 
 Откройте [Present AI Дима в Telegram](https://t.me/present_ai_dima_bot?start=voice_input) или [GitHub Releases](https://github.com/divolax/voice-input-windows/releases/latest).
 
-- **Windows 10/11, x64:** [скачать установщик EXE](https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-Setup-0.3.0-x64.exe)
-- **MacBook с Apple silicon (M1, M2, M3, M4):** [скачать DMG для arm64](https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-0.3.0-macos-arm64.dmg)
-- **MacBook с Intel:** [скачать DMG для x86_64](https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-0.3.0-macos-x86_64.dmg)
+- **Windows 10/11, x64:** [скачать установщик EXE](https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-Setup-0.3.1-x64.exe)
+- **MacBook с Apple silicon (M1, M2, M3, M4):** [скачать DMG для arm64](https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-0.3.1-macos-arm64.dmg)
+- **MacBook с Intel:** [скачать DMG для x86_64](https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-0.3.1-macos-x86_64.dmg)
 
 Чтобы узнать процессор Mac, откройте меню Apple → «Об этом Mac». Если там указан чип Apple M, выбирайте Apple silicon; если указан процессор Intel — версию Intel.
 
 ## Установка на Windows
 
-1. Скачайте `VoiceInput-Setup-0.3.0-x64.exe` и дважды щёлкните по нему в папке «Загрузки».
+1. Скачайте `VoiceInput-Setup-0.3.1-x64.exe` и дважды щёлкните по нему в папке «Загрузки».
 2. Нажмите **Install / Установить**. Программа устанавливается для вашей учётной записи Windows; права администратора не нужны.
 3. Оставьте включённым запуск после установки. Значок микрофона появится рядом с часами. Если он скрыт, нажмите стрелку `^` в системном трее.
 4. Щёлкните по полю для текста, зажмите `Ctrl` и `Alt`, говорите и отпустите клавиши.
