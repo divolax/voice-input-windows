@@ -1,0 +1,33 @@
+name: Build Windows installer
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          .\build.ps1 -Python python -Version $version
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $installer = "build\installer\VoiceInput-Setup-$version-x64.exe"
+          gh release create $env:GITHUB_REF_NAME $installer "${installer}.sha256" --generate-notes --title "Voice Input $version"

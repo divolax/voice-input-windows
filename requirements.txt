@@ -1,0 +1,8 @@
+faster-whisper>=1.1.1,<2
+av>=14,<20
+numpy>=1.26,<3
+sounddevice>=0.5,<1
+pynput>=1.7,<2
+pyperclip>=1.9,<2
+pystray>=0.19.5,<1
+Pillow>=10,<12
