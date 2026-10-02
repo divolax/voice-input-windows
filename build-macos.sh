@@ -76,5 +76,8 @@ ditto "$APP" "$STAGING/Voice Input.app"
 ln -s /Applications "$STAGING/Applications"
 DMG="$ROOT/build/release-assets/VoiceInput-${VERSION}-macos-${ARCH}.dmg"
 hdiutil create -volname "Voice Input $VERSION" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
-shasum -a 256 "$DMG" > "${DMG}.sha256"
+(
+  cd "$(dirname "$DMG")"
+  shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256"
+)
 echo "Created $DMG"
