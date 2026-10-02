@@ -19,13 +19,17 @@
 
 ## Кнопки
 
-- **Скачать установщик** → https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-Setup-0.2.0-x64.exe
-- **Полная инструкция и помощь** → https://github.com/divolax/voice-input-windows#readme
+- **Скачать установщик для Windows** → https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-Setup-0.2.0-x64.exe
+- **Скрипты (ZIP)** → `VoiceInput-Source-0.2.0.zip` отправляется ботом как документ.
+- **Инструкция Word** → `VoiceInput-Guide-RU.docx` отправляется ботом как документ.
+- **Все файлы на GitHub** → https://github.com/divolax/voice-input-windows/releases/latest
 
-Прямую передачу `.exe` через Telegram Bot API пока не используем: Telegram указывает для отправки документа ботом лимит 50 МБ, тогда как текущий установщик около 90 МБ; скачивание документа по HTTP URL через `sendDocument` официально ограничено PDF/ZIP. Кнопка открывает релиз, где лежат установщик и файл для проверки SHA-256.
+Ссылка на отдельный сценарий в боте и QR-код в DOCX: https://t.me/present_ai_dima_bot?start=voice_input
+
+Установщик около 90 МБ, поэтому скачивается с GitHub. Маленькие ZIP и DOCX бот загружает и отправляет человеку прямо в Telegram.
 
 ## Обновление
 
-Собери новую версию, создай тег `vX.Y.Z` и отправь его в GitHub. Workflow опубликует установщик в Releases. Обнови в этом сообщении кнопку полной инструкции, если изменился её адрес. Ссылка скачивания последнего установщика:
+Собери новую версию, создай тег `vX.Y.Z` и отправь его в GitHub. Workflow опубликует установщик в Releases. После изменения версии обнови имена и ссылки в боте. Текущая ссылка скачивания установщика:
 
 https://github.com/divolax/voice-input-windows/releases/latest/download/VoiceInput-Setup-0.2.0-x64.exe
