@@ -214,14 +214,24 @@ def acquire_single_instance() -> bool:
 
 
 def main() -> None:
-    if "--verify-runtime" in sys.argv:
+    if "--verify-runtime" in sys.argv or os.environ.get("VOICE_INPUT_VERIFY_RUNTIME") == "1":
         try:
             DictationApp().load_model()
             status("Packaged runtime and Whisper model are ready.")
         except Exception as exc:
             status(f"Packaged runtime check failed: {type(exc).__name__}: {exc}")
-            raise
-        return
+            if sys.stdout is not None:
+                sys.stdout.flush()
+            if sys.stderr is not None:
+                sys.stderr.flush()
+            os._exit(1)
+        if sys.stdout is not None:
+            sys.stdout.flush()
+        if sys.stderr is not None:
+            sys.stderr.flush()
+        # The frozen macOS GUI runtime can keep helper threads alive after main returns.
+        # This smoke-test mode must never fall through to the tray service or hang CI.
+        os._exit(0)
     if not acquire_single_instance():
         import ctypes
 

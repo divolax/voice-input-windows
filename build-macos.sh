@@ -66,7 +66,7 @@ PY
 # Re-sign after Info.plist is finalized; distribution remains unsigned by Apple Developer ID.
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep --strict "$APP"
-"$APP/Contents/MacOS/VoiceInput" --verify-runtime
+VOICE_INPUT_VERIFY_RUNTIME=1 "$APP/Contents/MacOS/VoiceInput"
 
 STAGING="$ROOT/build/macos-staging-$ARCH"
 mkdir -p "$ROOT/build/release-assets"
